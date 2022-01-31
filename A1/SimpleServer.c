@@ -151,6 +151,9 @@ int set_mime_type(char* filepath, struct http_response* rsp){
         }else if(strncmp(ext, "jpeg", 4) == 0){
             rsp->header->content_type = "image/jpeg";
             return 1;
+        }else if(strncmp(ext, "jpg", 3) == 0){
+            rsp->header->content_type = "image/jpg";
+            return 1;
         }
     }
 
@@ -231,6 +234,7 @@ struct http_response* handle_request(char* line){
 
     if(header_reqs == NULL){
         response->header->status = 400;
+        printf("uh oh skinky !!!\n");
         return response;
     }
 
@@ -238,10 +242,12 @@ struct http_response* handle_request(char* line){
 
     if(request_line == NULL){
         response->header->status = 400;
+        printf("uh oh skinky !!!\n");
         return response;
     }
     if(!validate_request(request_line)){
         response->header->status = 400;
+        printf("uh oh skinky !!!\n");
         return response;
     }
 
@@ -250,14 +256,18 @@ struct http_response* handle_request(char* line){
     // TODO: Handle case for relative & absolute path 
     // TODO: Handle conditional get request status or wtv
     // NOTE: Current implementation handles relative 
-    char* filepath = malloc(sizeof(char) * strlen(request_line[1] + 1));
-    strcat(filepath, ".");
-    strcat(filepath, request_line[1]);
+    char* filepath = malloc(sizeof(char) * strlen(request_line[1]) + 2);
+    snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
 
     // Checks if the file exists
     if(access(filepath, F_OK) == 0){
         if(!set_mime_type(filepath, response)){
             response->header->status = 400;
+            printf("uh oh skinky!!!\n");
+            free(header_reqs);
+            free(request_line);
+            free(filepath);
+            return response;
         };
 
         struct stat st;
@@ -265,10 +275,11 @@ struct http_response* handle_request(char* line){
         response->header->content_length = st.st_size;
         response->body->fp = fopen(filepath, "r");
         response->header->status = 200;
-
+        
     }else{
         // TODO: I forgor which status code lol pepehands
         response->header->status = 400;
+        printf("uh oh skinky!!!\n");
     }
 
     free(header_reqs);
@@ -295,23 +306,35 @@ void handle_response(int connfd, struct http_response* resp){
     // 
     // ALSO this section needs error checking
 
+
     char* header = generate_header(connfd, resp->header);
     size_t header_size = strlen(header);
-    int buffer_size = header_size + resp->header->content_length + 1;
+
+    int buffer_size = header_size + 1;
+
+    // Only add body to buffer if status is 200
+    if(resp->header->status == 200){
+        buffer_size += resp->header->content_length;
+    }
+
     char *buffer = malloc(sizeof(char) * buffer_size);
-    
     sprintf(buffer, header, header_size);
 
-    if(fread(buffer + header_size, 1, resp->header->content_length, resp->body->fp) != resp->header->content_length){
+    if(resp->header->status == 200){
+        if(fread(buffer + header_size, 1, resp->header->content_length, resp->body->fp) != resp->header->content_length){
+            fclose(resp->body->fp);
+            error_exit("Uh oh...Skinky!");
+        };
         fclose(resp->body->fp);
-        error_exit("Uh oh...Skinky!");
-    };
+    }
+    
 
     write(connfd, buffer, buffer_size - 1);
 
     close(connfd);
-    fclose(resp->body->fp);
     free(resp);
+    free(buffer);
+    free(header);
 
 }
 
