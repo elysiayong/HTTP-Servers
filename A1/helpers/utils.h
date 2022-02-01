@@ -9,8 +9,11 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <netdb.h>
+#include <ctype.h>
+#include <errno.h>
 
-#define PORT 18000
-#define MAXLINE 4096
-#define SA struct sockaddr
+void error_exit(char*);
+char** split_string(char*, char*, int*);
+char** split_string_char(char*, char, int*);
 
+int get_port(int argc, char const *argv[]);
