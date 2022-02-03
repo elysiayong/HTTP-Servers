@@ -71,11 +71,6 @@ char** split_string_char(char* str, char delim, int* num_tokens){
 
 int get_port(int argc, char const *argv[]){
     
-    // Check if we have enough arguments...
-    if (argc < 3) { 
-        error_exit("port # and/or http root path were not given...");
-    }
-
     // Check if we got a valid port #
     for (int i=0; i < strlen(argv[1]); i++){
         if (!isdigit(argv[1][i])){

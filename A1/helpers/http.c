@@ -73,11 +73,7 @@ void parse_headers(char** hreqs, int num_hr, struct http_response* rsp){
         // char* info = header_info[1];
 
         // Check for conditionals, set rsp and return accordingly
-        if(strncmp(header, "Last-Modified", strlen("Last-Modified")) == 0){
-
-        }if(strncmp(header, "ETag", strlen("ETag")) == 0){
-            
-        }if(strncmp(header, "If-Match", strlen("If-Match")) == 0){
+        if(strncmp(header, "If-Match", strlen("If-Match")) == 0){
             
         }if(strncmp(header, "If-None-Match", strlen("If-None-Match")) == 0){
             
@@ -109,6 +105,9 @@ char* generate_header(struct http_header* header){
         }else if(header->status == 404){
             sprintf(status_msg, "404 Not Found"); 
 
+        }else if(header->status == 304){
+            sprintf(status_msg, "304 Not Modified"); 
+
         }else if(header->status == 500){
             sprintf(status_msg, "500 Internal Server Error");
 
@@ -133,7 +132,6 @@ struct http_response* type_response(char* line){
 
     if(header_reqs == NULL){
         response->header->status = 400;
-        printf("uh oh skinky !!!\n");
         return response;
     }
 
@@ -141,12 +139,10 @@ struct http_response* type_response(char* line){
 
     if(request_line == NULL){
         response->header->status = 400;
-        printf("uh oh skinky !!!\n");
         return response;
     }
     if(!validate_request(request_line)){
         response->header->status = 400;
-        printf("uh oh skinky !!!\n");
         return response;
     }
 
@@ -155,22 +151,33 @@ struct http_response* type_response(char* line){
     // TODO: Handle case for relative & absolute path 
     // TODO: Handle conditional get request status or wtv
     // NOTE: Current implementation handles relative 
-    char* filepath = malloc(sizeof(char) * strlen(request_line[1]) + 2);
-    snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
+    char* filepath = malloc(sizeof(char) * (strlen(http_root_path) + strlen(request_line[1]) + 2));
+    //snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
+    strcpy(filepath, http_root_path);
+    strncat(filepath, request_line[1], strlen(request_line[1]));
 
     // Checks if the file exists
     if(access(filepath, F_OK) == 0){
+
+        struct stat st;
+        stat(filepath, &st);
+
+        if (!S_ISREG(st.st_mode)){
+            response->header->status = 400;
+            free(header_reqs);
+            free(request_line);
+            free(filepath);
+            return response;
+        }
+
         if(!set_mime_type(filepath, response)){
             response->header->status = 400;
-            printf("uh oh skinky!!!\n");
             free(header_reqs);
             free(request_line);
             free(filepath);
             return response;
         };
 
-        struct stat st;
-        stat(filepath, &st);
         response->header->content_length = st.st_size;
         response->body->fp = fopen(filepath, "r");
         response->header->status = 200;
@@ -178,7 +185,6 @@ struct http_response* type_response(char* line){
     }else{
         // TODO: I forgor which status code lol pepehands
         response->header->status = 400;
-        printf("uh oh skinky!!!\n");
     }
 
     free(header_reqs);
