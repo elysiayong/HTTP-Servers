@@ -180,7 +180,6 @@ struct http_response* type_response(char* line){
 
     if(header_reqs == NULL){
         response->header->status = 400;
-        printf("uh oh skinky !!!\n");
         return response;
     }
 
@@ -188,12 +187,10 @@ struct http_response* type_response(char* line){
 
     if(request_line == NULL){
         response->header->status = 400;
-        printf("uh oh skinky !!!\n");
         return response;
     }
     if(!validate_request(request_line, num_rl)){
         response->header->status = 400;
-        printf("uh oh skinky !!!\n");
         return response;
     }
 
@@ -202,11 +199,25 @@ struct http_response* type_response(char* line){
     // TODO: Handle case for relative & absolute path 
     // TODO: Handle conditional get request status or wtv
     // NOTE: Current implementation handles relative 
-    char* filepath = malloc(sizeof(char) * strlen(request_line[1]) + 2);
-    snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
+    char* filepath = malloc(sizeof(char) * (strlen(http_root_path) + strlen(request_line[1]) + 2));
+    //snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
+    strcpy(filepath, http_root_path);
+    strncat(filepath, request_line[1], strlen(request_line[1]));
 
     // Checks if the file exists
     if(access(filepath, F_OK) == 0){
+
+        struct stat st;
+        stat(filepath, &st);
+
+        if (!S_ISREG(st.st_mode)){
+            response->header->status = 400;
+            free(header_reqs);
+            free(request_line);
+            free(filepath);
+            return response;
+        }
+
         if(!set_mime_type(filepath, response)){
             response->header->status = 501;
             free(header_reqs);
@@ -225,7 +236,6 @@ struct http_response* type_response(char* line){
     }else{
         // TODO: I forgor which status code lol pepehands
         response->header->status = 400;
-        printf("uh oh skinky!!!\n");
     }
 
     free(header_reqs);

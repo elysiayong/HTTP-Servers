@@ -94,13 +94,11 @@ char** split_string_char(char* str, char delim, int stop_point, int* num_tokens)
 time_t get_time(char* str, const char* format){
     struct tm parsed_time;
     strptime(str, format, &parsed_time);
-    
     time_t lt = mktime(&parsed_time);
     return lt;
 }
 
 int get_port(int argc, char const *argv[]){
-
     // Check if we got a valid port #
     for (int i=0; i < strlen(argv[1]); i++){
         if (!isdigit(argv[1][i])){

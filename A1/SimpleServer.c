@@ -2,20 +2,24 @@
 
 // ----------------------------- Server ---------------------------------
 
+int port_number;
+const char* http_root_path;
+
 /*** 
  * SIMPLESERVER!
  */
 int main(int argc, char const *argv[])
 {
     // Check if we have enough arguments...
-    // if (argc < 3) { 
-    //     error_exit("port # and/or http root path were not given...");
-    // }
-    
-    // 1. Create socket + bind on an address and listen...
-    int server_fd = setup_server(18000, "./test_websites/example/index.html", 5);
+    if (argc < 3) { 
+        error_exit("port # and/or http root path were not given...");
+    }
 
-    // int server_fd = setup_server(get_port(argc, argv), argv[2], 5);
+    port_number = get_port(argc, argv);
+    http_root_path = argv[2];
+
+    // 1. Create socket + bind on an address and listen...
+    int server_fd = setup_server(port_number, http_root_path, 5);
     
     // 2. Start server, then wait and respond to clients...
     for(;;){
