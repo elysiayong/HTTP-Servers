@@ -1,15 +1,22 @@
 #include "*.h"
 
 struct http_response* init_response(){
+
+    // TODO: ADD MALLOC ERROR CHECKING:
+
     struct http_response *response = malloc(sizeof(struct http_response*)); 
     if(response == NULL) return NULL;
 
     response->header = malloc(sizeof(struct http_header*));
+    response->header->content_type = malloc(sizeof(char*));
+    response->header->version = malloc(sizeof(char*));
+    // response->header->status = malloc(sizeof(int));
+    // response->header->content_length = malloc(sizeof(int));
+    response->header->connection_type = malloc(sizeof(char*));
     if(response == NULL) return NULL;
 
-    response->header->version = malloc(sizeof(int));
-
     response->body = malloc(sizeof(struct http_body*));
+    response->body->fp = malloc(sizeof(struct FILE*));
     if(response == NULL) return NULL;
 
     return response;
@@ -83,8 +90,7 @@ int match_etag(char* header_info, struct stat st){
     return 0;
 }
 
-
-int parse_headers(char** hreqs, int num_hr, struct stat st, struct http_response* rsp){
+int get_response_status(char** hreqs, int num_hr, struct stat st, struct http_response* rsp){
     for(int i = 1; i < num_hr; i++){
         int y = 0;
         char** header_info = split_string_char(hreqs[i], ':', 1, &y);
@@ -132,6 +138,93 @@ int parse_headers(char** hreqs, int num_hr, struct stat st, struct http_response
     return 200;
 }
 
+// Handles request appropriately and generates an http response
+struct http_response* type_response(char* line){
+    struct http_response* response = init_response();
+    char* request = line;
+    int num_hr, num_rl = 0;
+    char** header_reqs = split_string(request, "\r\n", &num_hr);
+
+    if(header_reqs == NULL){
+        response->header->status = 400;
+        printf("Bad header requests from client...\n");
+        return response;
+    }
+
+    char** request_line = split_string_char(header_reqs[0], ' ', -1, &num_rl);
+
+    if(request_line == NULL){
+        response->header->status = 400;
+        printf("Bad request lines from client...\n");
+        return response;
+    }
+    if(!validate_request(request_line, num_rl)){
+        response->header->status = 400;
+        printf("Bad request from client (NOT GET or HTTP 1.0 or 1.1)...\n");
+        return response;
+    }
+
+    response->header->version = request_line[2];
+
+    /**
+    for (int i=0; i < num_hr; i++){
+        printf("%d: %s\n", i, header_reqs[i]);
+    }
+
+    for (int i=0; i < num_rl; i++){
+        printf("%d: %s\n", i, request_line[i]);
+    }
+    */
+
+
+    char * connection_type_copy = malloc(strlen(header_reqs[2]) + 1); // because this gets overwritten when we call get_response_status
+    strcpy(connection_type_copy, header_reqs[2]);
+    response->header->connection_type = connection_type_copy;
+
+    // Get file starting from root directory...
+    char* filepath = malloc(sizeof(char) * (strlen(http_root_path) + strlen(request_line[1]) + 2));
+    //snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
+    strcpy(filepath, http_root_path);
+    strncat(filepath, request_line[1], strlen(request_line[1]));
+
+    printf("Client requested: %s\n", filepath);
+
+    // Checks if the file exists
+    if(access(filepath, F_OK) == 0){
+
+        struct stat st;
+        stat(filepath, &st);
+
+        if (!S_ISREG(st.st_mode)){
+            response->header->status = 400;
+            printf("This was not a file...\n");
+        }
+
+        else if(!set_mime_type(filepath, response)){
+            response->header->status = 501;
+            printf("This was not a valid mime type...\n");
+        }
+
+        else {
+            stat(filepath, &st);
+            response->header->status = get_response_status(header_reqs, num_hr, st, response);
+            response->header->content_length = st.st_size;
+            response->body->fp = fopen(filepath, "r");
+        }
+        
+    } else{
+        response->header->status = 400;
+        printf("Could not get file...\n");
+    }
+
+    // CANNOT FREE THESE YET, BECAUSE CAN BE USED IN RESPONSE HEADER!
+    //free(header_reqs);
+    //free(request_line);
+    free(filepath);
+
+    return response;
+}
+
 // Returns the http response header depending on the status 
 char* generate_header(struct http_header* header){
     char* header_rsp = malloc(sizeof(char) * 1024);
@@ -141,8 +234,9 @@ char* generate_header(struct http_header* header){
         sprintf(header_rsp,
                 "%s 200 OK\r\n"
                 "Content-Type: %s\r\n"
+                "%s\r\n"
                 "Content-Length: %d\r\n\r\n",
-                header->version, header->content_type, (int) header->content_length);
+                header->version, header->content_type, header->connection_type, (int) header->content_length);
 
         return header_rsp;
     }else{
@@ -170,84 +264,4 @@ char* generate_header(struct http_header* header){
         return header_rsp;
     }
     return NULL;
-}
-
-// Handles request appropriately and generates an http response
-// TODO: Messy looking becauase of error checks will need to polish
-struct http_response* type_response(char* line){
-    struct http_response* response = init_response();
-    char* request = line;
-    int num_hr, num_rl = 0;
-    char** header_reqs = split_string(request, "\r\n", &num_hr);
-
-    if(header_reqs == NULL){
-        response->header->status = 400;
-        printf("BAD HEADER_REQS...\n");
-        return response;
-    }
-
-    char** request_line = split_string_char(header_reqs[0], ' ', -1, &num_rl);
-
-    if(request_line == NULL){
-        response->header->status = 400;
-        printf("BAD REQUEST LINE...\n");
-        return response;
-    }
-    if(!validate_request(request_line, num_rl)){
-        response->header->status = 400;
-        printf("BAD VALIDATE REQ...\n");
-        return response;
-    }
-
-    response->header->version = request_line[2];
-
-    // Get file starting from root directory...
-    char* filepath = malloc(sizeof(char) * (strlen(http_root_path) + strlen(request_line[1]) + 2));
-    //snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
-    strcpy(filepath, http_root_path);
-    strncat(filepath, request_line[1], strlen(request_line[1]));
-
-    printf("Client requested: %s\n", filepath);
-
-    // Checks if the file exists
-    if(access(filepath, F_OK) == 0){
-
-        struct stat st;
-        stat(filepath, &st);
-
-        if (!S_ISREG(st.st_mode)){
-            response->header->status = 400;
-            free(header_reqs);
-            free(request_line);
-            free(filepath);
-            printf("This was not a file...\n");
-            return response;
-        }
-
-        if(!set_mime_type(filepath, response)){
-            response->header->status = 501;
-            free(header_reqs);
-            free(request_line);
-            free(filepath);
-            printf("This was not a valid mime type...\n");
-            return response;
-        };
-
-        stat(filepath, &st);
-
-        response->header->status = parse_headers(header_reqs, num_hr, st, response);
-        printf("Response status: %d\n", response->header->status);
-        response->header->content_length = st.st_size;
-        response->body->fp = fopen(filepath, "r");
-        
-    }else{
-        response->header->status = 400;
-        printf("Could not get file...\n");
-    }
-
-    free(header_reqs);
-    free(request_line);
-    free(filepath);
-
-    return response;
 }

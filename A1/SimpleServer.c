@@ -1,7 +1,5 @@
 #include "helpers/*.h"
 
-// ----------------------------- Server ---------------------------------
-
 int port_number;
 const char* http_root_path;
 

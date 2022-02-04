@@ -31,20 +31,18 @@ int setup_server(int port, char const *http_root_path, int back_log_capacity) {
     return server_fd;
 }
 
-// Writes the http response into a buffer and sends it to the client
-void answer_client(int client_fd, struct http_response* resp){     
-    // Currently what it does:
-    // 1) Generate an http header
+// Currently how we send response to client:
+    // 0) Create http response form from client's request
+    // 1) Generate the http header
     // 2) Create a buffer with the size of header + body + null terminator
     // 3) Write the http header into buffer
-    // 4) Read file data into buffer 
+    // 4) Read file data (i.e. response body) into buffer 
     // 5) Write buffer to client socket
     // 
     // And no, you cannot write the header to socket first, the write body to socket
     // I tried that, the client doesn't treat the delayed payload as a singular response, generating garbage.
     // 
-    // ALSO this section needs error checking
-
+void send_client_response(int client_fd, struct http_response* resp){     
     char* header = generate_header(resp->header);
     size_t header_size = strlen(header);
 
@@ -65,7 +63,6 @@ void answer_client(int client_fd, struct http_response* resp){
         };
         fclose(resp->body->fp);
     }
-    
 
     write(client_fd, buffer, buffer_size - 1);
     free(resp);
@@ -74,7 +71,6 @@ void answer_client(int client_fd, struct http_response* resp){
 }
 
 void handle_client(int client_fd, int server_fd) {
-
     printf("Client connected to server at fd: %d!\n", client_fd);
     
     char recvline[MAXLINE+1] = {0};
@@ -91,7 +87,7 @@ void handle_client(int client_fd, int server_fd) {
     }
 
     if(n < 0){
-        close(client_fd); 
+        // close(client_fd); Can't have this for persisten connection, I think?
         error_exit("read error");
     }
 
@@ -100,11 +96,12 @@ void handle_client(int client_fd, int server_fd) {
     struct http_response* response = type_response(recvline);
 
     printf("Response status: %d\n", response->header->status);
+    printf("Response connection: %s\n", response->header->connection_type);
 
     if(response == NULL){
-        close(client_fd);
-        error_exit("Could not get response from client.");
+        //close(client_fd);
+        error_exit("Could not get generate response for client.");
     }
 
-    answer_client(client_fd, response);
+    send_client_response(client_fd, response);
 }

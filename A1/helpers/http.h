@@ -11,6 +11,7 @@ struct http_header{
     char* version; 
     int status;
     int content_length;
+    char* connection_type;
 };
 
 struct http_body{
