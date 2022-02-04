@@ -75,7 +75,7 @@ void answer_client(int client_fd, struct http_response* resp){
 
 void handle_client(int client_fd, int server_fd) {
 
-    printf("Client connected to server: %d!\n", client_fd);
+    printf("Client connected to server at fd: %d!\n", client_fd);
     
     char recvline[MAXLINE+1] = {0};
     int n = 0;
@@ -98,6 +98,8 @@ void handle_client(int client_fd, int server_fd) {
     // Replace crlf+crlf with array terminator
     recvline[n-4] = '\0';
     struct http_response* response = type_response(recvline);
+
+    printf("Response status: %d\n", response->header->status);
 
     if(response == NULL){
         close(client_fd);

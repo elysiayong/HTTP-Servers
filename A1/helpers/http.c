@@ -21,7 +21,7 @@ int validate_request(char** rq, int num_tokens){
         return 0;
     }if(strncmp(rq[1], "/", 1) != 0){
         return 0;
-    }if(strncmp(rq[2], "HTTP/1.0", strlen("HTTP/1.0")) != 0 || 
+    }if(strncmp(rq[2], "HTTP/1.0", strlen("HTTP/1.0")) != 0 && 
         strncmp(rq[2], "HTTP/1.1", strlen("HTTP/1.1")) != 0){
         return 0;
     }
@@ -180,6 +180,7 @@ struct http_response* type_response(char* line){
 
     if(header_reqs == NULL){
         response->header->status = 400;
+        printf("BAD HEADER_REQS...\n");
         return response;
     }
 
@@ -187,10 +188,12 @@ struct http_response* type_response(char* line){
 
     if(request_line == NULL){
         response->header->status = 400;
+        printf("BAD REQUEST LINE...\n");
         return response;
     }
     if(!validate_request(request_line, num_rl)){
         response->header->status = 400;
+        printf("BAD VALIDATE REQ...\n");
         return response;
     }
 
@@ -201,6 +204,8 @@ struct http_response* type_response(char* line){
     //snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
     strcpy(filepath, http_root_path);
     strncat(filepath, request_line[1], strlen(request_line[1]));
+
+    printf("Client requested: %s\n", filepath);
 
     // Checks if the file exists
     if(access(filepath, F_OK) == 0){
@@ -213,6 +218,7 @@ struct http_response* type_response(char* line){
             free(header_reqs);
             free(request_line);
             free(filepath);
+            printf("This was not a file...\n");
             return response;
         }
 
@@ -221,17 +227,20 @@ struct http_response* type_response(char* line){
             free(header_reqs);
             free(request_line);
             free(filepath);
+            printf("This was not a valid mime type...\n");
             return response;
         };
 
         stat(filepath, &st);
 
         response->header->status = parse_headers(header_reqs, num_hr, st, response);
+        printf("Response status: %d\n", response->header->status);
         response->header->content_length = st.st_size;
         response->body->fp = fopen(filepath, "r");
         
     }else{
         response->header->status = 400;
+        printf("Could not get file...\n");
     }
 
     free(header_reqs);
