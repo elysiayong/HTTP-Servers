@@ -32,9 +32,7 @@ int setup_server(int port, char const *http_root_path, int back_log_capacity) {
 }
 
 // Writes the http response into a buffer and sends it to the client
-void answer_client(int client_fd, struct http_response* resp){ 
-    // TODO: Send body IFF resp->header->status is 200  
-    
+void answer_client(int client_fd, struct http_response* resp){     
     // Currently what it does:
     // 1) Generate an http header
     // 2) Create a buffer with the size of header + body + null terminator

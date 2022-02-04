@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <time.h>
 
 struct http_response{
     struct http_header* header;
@@ -7,6 +8,7 @@ struct http_response{
 
 struct http_header{
     char* content_type;
+    char* version; 
     int status;
     int content_length;
 };

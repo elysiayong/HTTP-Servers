@@ -14,10 +14,15 @@ struct http_response* init_response(){
 }
 
 // Check header method, not too sure what else to add here
-int validate_request(char** rq){
+int validate_request(char** rq, int num_tokens){
+    if(num_tokens != 3) return 0;
+    
     if(strncmp(rq[0], "GET", 3) != 0){
         return 0;
     }if(strncmp(rq[1], "/", 1) != 0){
+        return 0;
+    }if(strncmp(rq[2], "HTTP/1.0", strlen("HTTP/1.0") != 0) || 
+        strncmp(rq[2], "HTTP/1.1", strlen("HTTP/1.1") != 0)){
         return 0;
     }
     return 1;
@@ -33,7 +38,7 @@ int set_mime_type(char* filepath, struct http_response* rsp){
     char* ext = strrchr(filename, '.');
 
     if(!ext){
-        // treat as text data
+        // treat as text data???
         rsp->header->content_type = "text/plain";
         return 1;
     }else{
@@ -62,31 +67,67 @@ int set_mime_type(char* filepath, struct http_response* rsp){
     return 0;
 }
 
-// TODO: check what the conditionals mean, likely need to modify parameters
-// to include filepath to check file information(?)
-void parse_headers(char** hreqs, int num_hr, struct http_response* rsp){
-    
+// As stated in piazza (link), we are using the date in the format of
+// <day-name>, <day> <month> <year> as the etag
+int match_etag(char* header_info, struct stat st){
+    char file_mtime[45] = {0};
+    struct tm buff;
+    struct tm* ptime = gmtime_r(&(st.st_mtime), &buff);
+    strftime(file_mtime, sizeof(file_mtime), "%a, %d %b %Y", ptime);
+        
+    if(strncmp(file_mtime, header_info, strlen(file_mtime)) == 0){
+        return 1;
+    }
+    return 0;
+}
+
+
+int parse_headers(char** hreqs, int num_hr, struct stat st, struct http_response* rsp){
     for(int i = 1; i < num_hr; i++){
         int y = 0;
-        char** header_info = split_string_char(hreqs[i], ':', &y);
+        char** header_info = split_string_char(hreqs[i], ':', 1, &y);
         char* header = header_info[0];
-        // char* info = header_info[1];
+        char* info = header_info[1];
 
-        // Check for conditionals, set rsp and return accordingly
-        if(strncmp(header, "Last-Modified", strlen("Last-Modified")) == 0){
+        if(strncmp(header, "If-Match", strlen("If-Match")) == 0){
+            int matched = match_etag(info, st);
 
-        }if(strncmp(header, "ETag", strlen("ETag")) == 0){
-            
-        }if(strncmp(header, "If-Match", strlen("If-Match")) == 0){
-            
-        }if(strncmp(header, "If-None-Match", strlen("If-None-Match")) == 0){
-            
-        }if(strncmp(header, "If-Modified-Since", strlen("If-Modified-Since")) == 0){
-            
-        }if(strncmp(header, "If-UnModified-Since", strlen("If-UnModified-Since")) == 0){
-            
+            if(matched){
+                return 200;
+            }else{
+                return 404;
+            }
+
+        }else if(strncmp(header, "If-None-Match", strlen("If-None-Match")) == 0){
+            int matched = match_etag(info, st);
+
+            if(!matched){
+                return 200;
+            }else{
+                return 404;
+            }
+
+        }else if(strncmp(header, "If-Modified-Since", strlen("If-Modified-Since")) == 0){
+            time_t request_time = get_time(info, "%a, %d %b %Y %T GMT");
+
+            if(difftime(request_time, st.st_mtime) < 0){
+                return 200;
+            }else{
+                return 304;
+            }
+
+        }else if(strncmp(header, "If-UnModified-Since", strlen("If-UnModified-Since")) == 0){
+            time_t request_time = get_time(info, "%a, %d %b %Y %T GMT");
+
+            if(difftime(request_time, st.st_mtime) > 0){
+                return 200;
+            }else{
+                return 412;
+            }
         }
     }
+    
+    return 200;
 }
 
 // Returns the http response header depending on the status 
@@ -96,18 +137,24 @@ char* generate_header(struct http_header* header){
 
     if(header->status == 200){
         sprintf(header_rsp,
-                "HTTP/1.0 200 OK\r\n"
+                "%s 200 OK\r\n"
                 "Content-Type: %s\r\n"
                 "Content-Length: %d\r\n\r\n",
-                header->content_type, (int) header->content_length);
+                header->version, header->content_type, (int) header->content_length);
 
         return header_rsp;
     }else{
         if(header->status == 400){
             sprintf(status_msg, "400 Bad Request");
 
+        }else if(header->status == 304){
+            sprintf(status_msg, "304 Not Modified");
+
         }else if(header->status == 404){
             sprintf(status_msg, "404 Not Found"); 
+
+        }else if(header->status == 412){
+            sprintf(status_msg, "412 Precondition Failed");
 
         }else if(header->status == 500){
             sprintf(status_msg, "500 Internal Server Error");
@@ -117,7 +164,7 @@ char* generate_header(struct http_header* header){
 
         }else return NULL;
 
-        sprintf(header_rsp, "HTTP/1.0 %s\r\n\r\n", status_msg);
+        sprintf(header_rsp, "%s %s\r\n\r\n", header->version, status_msg);
         return header_rsp;
     }
     return NULL;
@@ -137,20 +184,20 @@ struct http_response* type_response(char* line){
         return response;
     }
 
-    char** request_line = split_string_char(header_reqs[0], ' ', &num_rl);
+    char** request_line = split_string_char(header_reqs[0], ' ', -1, &num_rl);
 
     if(request_line == NULL){
         response->header->status = 400;
         printf("uh oh skinky !!!\n");
         return response;
     }
-    if(!validate_request(request_line)){
+    if(!validate_request(request_line, num_rl)){
         response->header->status = 400;
         printf("uh oh skinky !!!\n");
         return response;
     }
 
-    parse_headers(header_reqs, num_hr, response);
+    response->header->version = request_line[2];
 
     // TODO: Handle case for relative & absolute path 
     // TODO: Handle conditional get request status or wtv
@@ -161,8 +208,7 @@ struct http_response* type_response(char* line){
     // Checks if the file exists
     if(access(filepath, F_OK) == 0){
         if(!set_mime_type(filepath, response)){
-            response->header->status = 400;
-            printf("uh oh skinky!!!\n");
+            response->header->status = 501;
             free(header_reqs);
             free(request_line);
             free(filepath);
@@ -171,9 +217,10 @@ struct http_response* type_response(char* line){
 
         struct stat st;
         stat(filepath, &st);
+
+        response->header->status = parse_headers(header_reqs, num_hr, st, response);
         response->header->content_length = st.st_size;
         response->body->fp = fopen(filepath, "r");
-        response->header->status = 200;
         
     }else{
         // TODO: I forgor which status code lol pepehands
