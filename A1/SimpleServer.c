@@ -10,7 +10,6 @@ const char* http_root_path;
  */
 int main(int argc, char const *argv[])
 {
-
     // Check if we have enough arguments...
     if (argc < 3) { 
         error_exit("port # and/or http root path were not given...");
