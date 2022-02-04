@@ -21,7 +21,7 @@ int validate_request(char** rq, int num_tokens){
         return 0;
     }if(strncmp(rq[1], "/", 1) != 0){
         return 0;
-    }if(strncmp(rq[2], "HTTP/1.0", strlen("HTTP/1.0")) != 0 || 
+    }if(strncmp(rq[2], "HTTP/1.0", strlen("HTTP/1.0")) != 0 &&
         strncmp(rq[2], "HTTP/1.1", strlen("HTTP/1.1")) != 0){
         return 0;
     }
