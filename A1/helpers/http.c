@@ -7,6 +7,8 @@ struct http_response* init_response(){
     response->header = malloc(sizeof(struct http_header*));
     if(response == NULL) return NULL;
 
+    response->header->version = malloc(sizeof(int));
+
     response->body = malloc(sizeof(struct http_body*));
     if(response == NULL) return NULL;
 
