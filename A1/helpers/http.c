@@ -21,8 +21,8 @@ int validate_request(char** rq, int num_tokens){
         return 0;
     }if(strncmp(rq[1], "/", 1) != 0){
         return 0;
-    }if(strncmp(rq[2], "HTTP/1.0", strlen("HTTP/1.0") != 0) || 
-        strncmp(rq[2], "HTTP/1.1", strlen("HTTP/1.1") != 0)){
+    }if(strncmp(rq[2], "HTTP/1.0", strlen("HTTP/1.0")) != 0 || 
+        strncmp(rq[2], "HTTP/1.1", strlen("HTTP/1.1")) != 0){
         return 0;
     }
     return 1;
@@ -196,9 +196,7 @@ struct http_response* type_response(char* line){
 
     response->header->version = request_line[2];
 
-    // TODO: Handle case for relative & absolute path 
-    // TODO: Handle conditional get request status or wtv
-    // NOTE: Current implementation handles relative 
+    // Get file starting from root directory...
     char* filepath = malloc(sizeof(char) * (strlen(http_root_path) + strlen(request_line[1]) + 2));
     //snprintf(filepath, strlen(request_line[1]) + 2, ".%s", request_line[1]);
     strcpy(filepath, http_root_path);
@@ -226,7 +224,6 @@ struct http_response* type_response(char* line){
             return response;
         };
 
-        struct stat st;
         stat(filepath, &st);
 
         response->header->status = parse_headers(header_reqs, num_hr, st, response);
@@ -234,7 +231,6 @@ struct http_response* type_response(char* line){
         response->body->fp = fopen(filepath, "r");
         
     }else{
-        // TODO: I forgor which status code lol pepehands
         response->header->status = 400;
     }
 
