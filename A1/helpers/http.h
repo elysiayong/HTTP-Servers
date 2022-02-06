@@ -1,5 +1,4 @@
 #include "utils.h"
-#include <time.h>
 
 struct http_response{
     struct http_header* header;
@@ -11,12 +10,14 @@ struct http_header{
     char* version; 
     int status;
     int content_length;
-    char* connection_type;
+    
+    char* connection;
 };
 
 struct http_body{
     FILE* fp;
 };
 
-struct http_response* type_response(char*);
-char* generate_header(struct http_header*);
+struct http_response* init_response();
+void parse_request_modify_response(char**, int, struct http_response*);
+char* response_header_to_str(struct http_header*);

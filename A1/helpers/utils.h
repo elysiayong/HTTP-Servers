@@ -19,4 +19,4 @@ char** split_string(char*, char*, int*);
 char** split_string_char(char*, char, int, int*);
 time_t get_time(char*, const char*);
 
-int get_port(int argc, char const *argv[]);
+int get_port(char const *arg);
