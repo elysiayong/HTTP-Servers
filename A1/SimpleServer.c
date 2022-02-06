@@ -19,6 +19,7 @@ int main(int argc, char const *argv[])
     
     // 2. Start server, then wait and respond to clients...
     for(;;){
+        
         int client_fd;
         if ( (client_fd = accept(server_fd, (struct sockaddr *) NULL, NULL)) < 0){ 
             printf("Could not accept client to server...\n"); 
@@ -27,6 +28,7 @@ int main(int argc, char const *argv[])
 
             handle_client(client_fd, server_fd);
 
+            printf("Closing client connection at fd: %d\n", client_fd);
             close(client_fd); // non-persistent...
         }
     }

@@ -12,17 +12,27 @@ int main(int argc, char const *argv[])
     http_root_path = argv[2];
 
     // 1. Create socket + bind on an address, then listen...
-    int server_fd = setup_server(port_number, http_root_path, 5);
+    int server_fd = setup_server(port_number, http_root_path, 20);
 
-    int client_fd = accept(server_fd, (struct sockaddr *) NULL, NULL);
-    
     // 2. Start server, then wait and respond to clients...
     for(;;){
-        if (!handle_client(client_fd, server_fd)){
-            close(client_fd);
-            client_fd = accept(server_fd, (struct sockaddr *) NULL, NULL);
+        int client_fd;
+        if ( (client_fd = accept(server_fd, (struct sockaddr *) NULL, NULL)) < 0){ 
+            printf("Could not accept client to server...\n"); 
+            
+        } else {
+
+            if (fork() == 0){
+                int continue_serving = 1; 
+                while(continue_serving){ 
+                    //if (!handle_client(client_fd, server_fd)) { continue_serving = 0; } 
+                    if(handle_client(client_fd, server_fd)){
+                        printf("Handled client request sent to server at fd: %d!\n", client_fd);
+                    }
+                }
+            } 
         }
-    }
+    } 
 
     // 3. Shutdown server!
     close(server_fd);

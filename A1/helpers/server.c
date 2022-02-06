@@ -33,7 +33,7 @@ int setup_server(int port, char const *http_root_path, int back_log_capacity) {
 
 int handle_client(int client_fd, int server_fd) {
     
-    printf("Client sending request to server at fd: %d!\n", client_fd);
+    // printf("Client sending request to server at fd: %d!\n", client_fd);
     
     char raw_request[MAXLINE+1] = {0}; int n = 0;
 
@@ -83,7 +83,6 @@ int handle_client(int client_fd, int server_fd) {
         return 1;
 
     } else {
-        
         return 0;
     }
 }
