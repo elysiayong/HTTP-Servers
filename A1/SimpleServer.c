@@ -26,7 +26,7 @@ int main(int argc, char const *argv[])
             
         } else {
 
-            handle_client(client_fd, server_fd);
+            handle_client(client_fd);
 
             printf("Closing client connection at fd: %d\n", client_fd);
             close(client_fd); // non-persistent...
