@@ -19,15 +19,21 @@ struct http_response* init_response() {
 
 // Check if the client sent a valid GET request...
 int valid_request(char** rq, int num_tokens){
-    if(num_tokens != 3) return 0;
+    if(num_tokens != 3){
+        printf("Not correct amount of tokens in request line...\n");
+        return 0;
+    }
     
     if(strncmp(rq[0], "GET", 3) != 0){
+        printf("Missing GET line in request...\n");
         return 0;
     }if(strncmp(rq[1], "/", 1) != 0){
+        printf("Missing / line in request...\n");
         return 0;
     }if(strncmp(rq[2], "HTTP/1.0", strlen("HTTP/1.0")) != 0 && 
         strncmp(rq[2], "HTTP/1.1", strlen("HTTP/1.1")) != 0){
-        return 0;
+            printf("Missing HTTP version line in request...\n");
+            return 0;
     }
     return 1;
 }
@@ -123,12 +129,17 @@ int get_response_status(char** hreqs, int num_hr, struct stat st, struct http_re
 void parse_request_modify_response(char** request, int num_request_lines, struct http_response* response){
 
     // Check if there are request lines
-    if(!request){ response->header->status = 400; return; }
+    if(!request){ printf("Malformed or empty request...\n"); response->header->status = 400; return; }
 
     // Check if the GET request the client sent is valid...
     int num_words;
     char** get_request_line = split_string_char(request[0], ' ', -1, &num_words);
-    if(!get_request_line || !valid_request(get_request_line, num_words)){ response->header->status = 400; return; }
+
+    if(!get_request_line || !valid_request(get_request_line, num_words)){ 
+        response->header->status = 400; 
+        printf("No request line, or missing basic request info...\n");
+        return; 
+    }
 
     // Get the HTTP version and connection type from the request--send same version in response
     response->header->version = get_request_line[2];
@@ -162,6 +173,7 @@ void parse_request_modify_response(char** request, int num_request_lines, struct
         else {
             stat(filepath, &st);
             response->header->status = get_response_status(request, num_request_lines, st, response);
+            printf("Got response status: %d...\n", response->header->status);
             response->header->content_length = st.st_size;
             response->body->fp = fopen(filepath, "r");
         }

@@ -52,9 +52,10 @@ int handle_client(int client_fd, int server_fd) {
         struct http_response* response = init_response();
         
         // Check that we were able to malloc everything
-        if (   !response 
-            || !response->header || !response->header->content_type || !response->header->version || !response->header->connection
-            || !response->body || !response->body->fp) {
+        if (!response || 
+            !response->header || !response->header->content_type || !response->header->version || !response->header->connection ||
+            !response->body || !response->body->fp) 
+            {
                 error_exit("Could not malloc response for client's request...\n"); 
             }
 

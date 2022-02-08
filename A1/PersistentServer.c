@@ -35,7 +35,7 @@ int main(int argc, char const *argv[])
                 printf("Closed client connection at fd: %d...\n", client_fd);
                 close(client_fd);
                 break;
-            } 
+            }
         }
     } 
 
