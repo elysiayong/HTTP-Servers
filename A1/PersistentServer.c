@@ -23,13 +23,18 @@ int main(int argc, char const *argv[])
         } else {
 
             if (fork() == 0){
-                int continue_serving = 1; 
-                while(continue_serving){ 
-                    //if (!handle_client(client_fd, server_fd)) { continue_serving = 0; } 
+                time_t start = time(NULL);
+                int timeout_seconds = 5;
+                while(time(NULL) - start < timeout_seconds){ 
                     if(handle_client(client_fd, server_fd)){
-                        printf("Handled client request sent to server at fd: %d!\n", client_fd);
+                        printf("Handled client request sent to server at fd: %d...\n", client_fd);
+                        start = time(NULL);
                     }
                 }
+                // After timeout: close client's connection
+                printf("Closed client connection at fd: %d...\n", client_fd);
+                close(client_fd);
+                break;
             } 
         }
     } 

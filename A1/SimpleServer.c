@@ -17,7 +17,7 @@ int main(int argc, char const *argv[])
     // 1. Create socket + bind on an address, then listen...
     int server_fd = setup_server(port_number, http_root_path, 5);
     
-    // 2. Start server, then wait and respond to clients...
+    // 2. Start server, then wait and respond to clients... not simultaneous as per: https://piazza.com/class/kxhl6o1cccn2oo?cid=98
     for(;;){
         
         int client_fd;

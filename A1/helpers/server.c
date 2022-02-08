@@ -33,14 +33,12 @@ int setup_server(int port, char const *http_root_path, int back_log_capacity) {
 
 int handle_client(int client_fd, int server_fd) {
     
-    // printf("Client sending request to server at fd: %d!\n", client_fd);
-    
     char raw_request[MAXLINE+1] = {0}; int n = 0;
 
     // 1. Read client message
     n = read(client_fd, raw_request, MAXLINE-1);
 
-    // TODO: HANDLE BAD REQUESTS if: bad_request(request): print error
+    // TODO: HANDLE BAD REQUESTS
 
     if(n > 0) {
         // Replace crlf+crlf with array terminator
@@ -52,7 +50,13 @@ int handle_client(int client_fd, int server_fd) {
 
         // Initialize the response
         struct http_response* response = init_response();
-        // TODO: CHECK IF EVERYTHING WAS MALLOC'D
+        
+        // Check that we were able to malloc everything
+        if (   !response 
+            || !response->header || !response->header->content_type || !response->header->version || !response->header->connection
+            || !response->body || !response->body->fp) {
+                error_exit("Could not malloc response for client's request...\n"); 
+            }
 
         // 2. Parse request, modify response accordingly
         parse_request_modify_response(request, num_request_lines, response); 
@@ -78,7 +82,14 @@ int handle_client(int client_fd, int server_fd) {
 
         write(client_fd, buffer, buffer_size - 1); 
 
-        // TODO: FREE!
+        free(buffer);
+        free(header);
+
+        // free(response->header->content_type); free(response->header->version); free(response->header->connection); free(response->header);
+        // free(response->body->fp); free(response->body);
+        free(response);
+        
+        free(request);
 
         return 1;
 
