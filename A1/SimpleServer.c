@@ -15,9 +15,9 @@ int main(int argc, char const *argv[])
     http_root_path = argv[2];
 
     // 1. Create socket + bind on an address, then listen...
-    int server_fd = setup_server(port_number, http_root_path, 5);
-    
-    // 2. Start server, then wait and respond to clients... not simultaneous as per: https://piazza.com/class/kxhl6o1cccn2oo?cid=98
+    int server_fd = setup_server(port_number, http_root_path, 5, 0);
+
+    // 2. Start server, then wait and respond to clients...
     for(;;){
         
         int client_fd;
@@ -25,11 +25,21 @@ int main(int argc, char const *argv[])
             printf("Could not accept client to server...\n"); 
             
         } else {
+            int pid = fork();
+            if(pid == -1){
+               error_exit("Fork error"); 
+            }
 
-            handle_client(client_fd);
+            if (pid == 0){
+                handle_client(client_fd);
 
-            printf("Closing client connection at fd: %d\n", client_fd);
-            close(client_fd); // non-persistent...
+                printf("Closing client connection at fd: %d\n", client_fd);
+                close(client_fd); // non-persistent...
+                break;
+            }else{
+                close(client_fd);
+            }
+
         }
     }
 

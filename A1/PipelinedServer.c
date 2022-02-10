@@ -12,7 +12,7 @@ int main(int argc, char const *argv[])
     http_root_path = argv[2];
 
     // 1. Create socket + bind on an address, then listen...
-    int server_fd = setup_server(port_number, http_root_path, 20);
+    int server_fd = setup_server(port_number, http_root_path, 20, 1);
 
     struct timeval timeout;
     timeout.tv_usec = 0; timeout.tv_sec = 5;
@@ -29,7 +29,7 @@ int main(int argc, char const *argv[])
             if(pid == -1){
                error_exit("Fork error"); 
             }
-
+            
             if (pid == 0){
                 setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
 

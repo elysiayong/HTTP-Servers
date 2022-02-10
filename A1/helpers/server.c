@@ -5,7 +5,7 @@
 // - https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/
 // - https://beej.us/guide/bgnet/html/index-wide.html
 
-int setup_server(int port, char const *http_root_path, int back_log_capacity) {
+int setup_server(int port, char const *http_root_path, int back_log_capacity, int has_persistence) {
 
     // Allocates a new TCP socket
     int server_fd, opt;
@@ -18,8 +18,7 @@ int setup_server(int port, char const *http_root_path, int back_log_capacity) {
     server_address.sin_addr.s_addr = htonl(INADDR_ANY); // responding to anything
     server_address.sin_port = htons(port);
 
-    //
-    if(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, (socklen_t)sizeof(int)) != 0){
+    if(has_persistence == 1 && setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, (socklen_t)sizeof(int)) != 0){
         error_exit("Setsockopt error...\n");
     }
 
@@ -97,9 +96,9 @@ int process_client_request(char* raw_request, int client_fd){
 
 
 int handle_client_pipeline(int client_fd){
-    char raw_pipelined_requests[MAXLINE+1] = {0};
+    char raw_pipelined_requests[(MAXLINE*30)+1] = {0};
 
-    if(read(client_fd, raw_pipelined_requests, MAXLINE-1) > 0){
+    if(read(client_fd, raw_pipelined_requests, (MAXLINE*30)-1) > 0){
         int keep_alive = 0;
         char *request_tail, *request, *request_head;
 
