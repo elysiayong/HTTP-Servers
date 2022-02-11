@@ -113,7 +113,7 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
             return 1; 
         }
 
-        strncpy(curr_request, requests, (int)next_request - (int)requests + 1);
+        strncpy(curr_request, requests, next_request - requests + strlen("\0"));
 
         if (!(keep_alive = _handle_client_request(curr_request, client_fd))) { 
             free(requests);
