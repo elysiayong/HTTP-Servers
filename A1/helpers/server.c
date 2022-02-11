@@ -108,12 +108,14 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
         memset(curr_request, 0, n);
 
         if (!(next_request = strstr(requests, "\r\n\r\n"))) { 
+            free(curr_request);
             return 1; 
         }
 
         strncpy(curr_request, requests, next_request - requests + 1);
 
         if (!(keep_alive = _handle_client_request(curr_request, client_fd))) { 
+            free(curr_request);
             return 0; 
         }
 
@@ -122,6 +124,7 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
 
     }
 
+    free(curr_request);
     return 0;
 }
 
