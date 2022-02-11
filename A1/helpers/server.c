@@ -82,10 +82,6 @@ int _handle_client_request(char* raw_request, int client_fd){
 
     free(buffer);
     free(header);
-
-    // free(response->header->content_type); 
-    // free(response->header->version); 
-    // free(response->header->connection); 
     free(response->header);
     free(response->body);
     free(response);
@@ -130,14 +126,16 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
 
 
 int handle_client_pipeline(int client_fd){
-
-    char raw_pipelined_requests[MAXBUFFER+1] = {0};
-
+    int keep_alive = 0;
+    char* raw_pipelined_requests = malloc(sizeof(char) * (MAXBUFFER + 1));
+    memset(raw_pipelined_requests, 0, MAXBUFFER + 1);
     int n = read(client_fd, raw_pipelined_requests, MAXBUFFER+1);
 
-    if(n > 0){ return split_pipeline_requests(raw_pipelined_requests, client_fd, n); }
-
-    return 0; 
+    if(n > 0){ 
+        keep_alive = split_pipeline_requests(raw_pipelined_requests, client_fd, n); 
+    }
+    free(raw_pipelined_requests);
+    return keep_alive; 
 }
 
 int handle_client(int client_fd) {
