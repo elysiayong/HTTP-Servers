@@ -39,7 +39,7 @@ int setup_server(int port, char const *http_root_path, int back_log_capacity, in
     return server_fd;
 }
 
-int process_client_request(char* raw_request, int client_fd){
+int _handle_client_request(char* raw_request, int client_fd){
     // Separate the request--line by line, into an array of strings for easy-read
     int num_request_lines = 0;
     char** request = split_string(raw_request, "\r\n", &num_request_lines); 
@@ -95,33 +95,49 @@ int process_client_request(char* raw_request, int client_fd){
 }
 
 
-int handle_client_pipeline(int client_fd){
-    char raw_pipelined_requests[(MAXLINE*30)+1] = {0};
 
-    if(read(client_fd, raw_pipelined_requests, (MAXLINE*30)-1) > 0){
-        int keep_alive = 0;
-        char *request_tail, *request, *request_head;
 
-        request_head = raw_pipelined_requests;
-        
-        while((request_tail = strstr(request_head, "\r\n\r\n")) != NULL) {
-            // Gets a request from the pipelined requests
-            int request_len = request_tail - request_head + 1;
-            request = (char *)malloc(request_len * sizeof(char));
-            memset(request, '\0', request_len);
-            strncpy(request, request_head, request_len);
-            
-            // Process the request
-            keep_alive = process_client_request(request, client_fd);
-            free(request);
+// Return 1 if each pipelined requests was parsed successfully, return 0, otherwise.
+int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
 
-            // Move to next pipelined request
-            request_head = request_tail + strlen("\r\n\r\n");
+    int keep_alive;
+    char* requests = raw_requests; // pointer to all requests, starting at curr_request
+    char* curr_request = malloc(n * sizeof(char)); // pointer to the start of the curr_request
+    char* next_request; // pointer to the end of the curr_request
+
+    for(;;){
+        memset(curr_request, 0, n);
+
+        if (!(next_request = strstr(requests, "\r\n\r\n"))) { 
+            free(requests); 
+            return 1; 
         }
-        return keep_alive;
-    }else{
-        return 0;
+
+        strncpy(curr_request, requests, next_request - requests + 1);
+
+        if (!(keep_alive = _handle_client_request(curr_request, client_fd))) { 
+            free(requests);
+            return 0; 
+        }
+
+        // move to next pipelined request
+        requests = next_request + strlen("\r\n\r\n");
+
     }
+
+    return 0;
+}
+
+
+int handle_client_pipeline(int client_fd){
+
+    char raw_pipelined_requests[MAXBUFFER+1] = {0};
+
+    int n = read(client_fd, raw_pipelined_requests, MAXBUFFER+1);
+
+    if(n > 0){ return split_pipeline_requests(raw_pipelined_requests, client_fd, n); }
+
+    return 0; 
 }
 
 int handle_client(int client_fd) {
@@ -131,7 +147,7 @@ int handle_client(int client_fd) {
     if(n > 0) {
         // Replace crlf+crlf with array terminator
         raw_request[n-4] = '\0';
-        return process_client_request(raw_request, client_fd);
+        return _handle_client_request(raw_request, client_fd);
     }
     return 0;
 }
