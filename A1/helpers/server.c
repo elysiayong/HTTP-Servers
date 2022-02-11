@@ -62,7 +62,7 @@ int _handle_client_request(char* raw_request, int client_fd){
     char* header = response_header_to_str(response->header);
     size_t header_size = strlen(header);
 
-    int buffer_size = header_size + strlen("\0");
+    int buffer_size = header_size + strlen("0");
 
     // Only add body to buffer if status is 200
     if(response->header->status == 200){ buffer_size += response->header->content_length; }
@@ -108,7 +108,7 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
             return 1; 
         }
 
-        strncpy(curr_request, requests, next_request - requests + strlen("\0"));
+        strncpy(curr_request, requests, next_request - requests + strlen("0"));
 
         if (!(keep_alive = _handle_client_request(curr_request, client_fd))) { 
             free(curr_request);
@@ -127,9 +127,9 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
 
 int handle_client_pipeline(int client_fd){
     int keep_alive = 0;
-    char* raw_pipelined_requests = malloc(sizeof(char) * (MAXBUFFER + strlen("\0")));
-    memset(raw_pipelined_requests, 0, MAXBUFFER + strlen("\0"));
-    int n = read(client_fd, raw_pipelined_requests, MAXBUFFER + strlen("\0"));
+    char* raw_pipelined_requests = malloc(sizeof(char) * (MAXBUFFER + strlen("0")));
+    memset(raw_pipelined_requests, 0, MAXBUFFER + strlen("0"));
+    int n = read(client_fd, raw_pipelined_requests, MAXBUFFER);
 
     if(n > 0){ 
         keep_alive = split_pipeline_requests(raw_pipelined_requests, client_fd, n); 
@@ -140,9 +140,9 @@ int handle_client_pipeline(int client_fd){
 
 int handle_client(int client_fd) {
     int keep_alive = 0;
-    char* raw_request = malloc(sizeof(char) * (MAXLINE + strlen("\0")));
-    memset(raw_request, 0, MAXLINE + strlen("\0"));
-    int n = read(client_fd, raw_request, MAXLINE + strlen("\0"));
+    char* raw_request = malloc(sizeof(char) * (MAXLINE + strlen("0")));
+    memset(raw_request, 0, MAXLINE + strlen("0"));
+    int n = read(client_fd, raw_request, MAXLINE);
 
     if(n > 0) {
         // Replace crlf+crlf with array terminator
