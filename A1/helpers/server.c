@@ -99,7 +99,6 @@ int _handle_client_request(char* raw_request, int client_fd){
 
 // Return 1 if each pipelined requests was parsed successfully, return 0, otherwise.
 int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
-
     int keep_alive;
     char* requests = raw_requests; // pointer to all requests, starting at curr_request
     char* curr_request = malloc(n * sizeof(char)); // pointer to the start of the curr_request
@@ -109,14 +108,12 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
         memset(curr_request, 0, n);
 
         if (!(next_request = strstr(requests, "\r\n\r\n"))) { 
-            free(requests); 
             return 1; 
         }
 
-        strncpy(curr_request, requests, next_request - requests + strlen("\0"));
+        strncpy(curr_request, requests, next_request - requests + 1);
 
         if (!(keep_alive = _handle_client_request(curr_request, client_fd))) { 
-            free(requests);
             return 0; 
         }
 
@@ -141,13 +138,17 @@ int handle_client_pipeline(int client_fd){
 }
 
 int handle_client(int client_fd) {
-    char raw_request[MAXLINE+1] = {0}; 
+    int keep_alive = 0;
+    char* raw_request = malloc(sizeof(char) * (MAXLINE + 1));
+    memset(raw_request, 0, MAXLINE + 1);
     int n = read(client_fd, raw_request, MAXLINE-1);
 
     if(n > 0) {
         // Replace crlf+crlf with array terminator
         raw_request[n-4] = '\0';
-        return _handle_client_request(raw_request, client_fd);
+        keep_alive = _handle_client_request(raw_request, client_fd);
     }
-    return 0;
+
+    free(raw_request);
+    return keep_alive;
 }
