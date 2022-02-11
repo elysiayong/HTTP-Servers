@@ -82,10 +82,6 @@ int _handle_client_request(char* raw_request, int client_fd){
 
     free(buffer);
     free(header);
-
-    // free(response->header->content_type); 
-    // free(response->header->version); 
-    // free(response->header->connection); 
     free(response->header);
     free(response->body);
     free(response);
@@ -99,7 +95,6 @@ int _handle_client_request(char* raw_request, int client_fd){
 
 // Return 1 if each pipelined requests was parsed successfully, return 0, otherwise.
 int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
-
     int keep_alive;
     char* requests = raw_requests; // pointer to all requests, starting at curr_request
     char* curr_request = malloc(n * sizeof(char)); // pointer to the start of the curr_request
@@ -109,14 +104,14 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
         memset(curr_request, 0, n);
 
         if (!(next_request = strstr(requests, "\r\n\r\n"))) { 
-            free(requests); 
+            free(curr_request);
             return 1; 
         }
 
-        strncpy(curr_request, requests, next_request - requests + strlen("\0"));
+        strncpy(curr_request, requests, next_request - requests + 1);
 
         if (!(keep_alive = _handle_client_request(curr_request, client_fd))) { 
-            free(requests);
+            free(curr_request);
             return 0; 
         }
 
@@ -125,29 +120,36 @@ int split_pipeline_requests(char* raw_requests, int client_fd, int n) {
 
     }
 
+    free(curr_request);
     return 0;
 }
 
 
 int handle_client_pipeline(int client_fd){
-
-    char raw_pipelined_requests[MAXBUFFER+1] = {0};
-
+    int keep_alive = 0;
+    char* raw_pipelined_requests = malloc(sizeof(char) * (MAXBUFFER + 1));
+    memset(raw_pipelined_requests, 0, MAXBUFFER + 1);
     int n = read(client_fd, raw_pipelined_requests, MAXBUFFER+1);
 
-    if(n > 0){ return split_pipeline_requests(raw_pipelined_requests, client_fd, n); }
-
-    return 0; 
+    if(n > 0){ 
+        keep_alive = split_pipeline_requests(raw_pipelined_requests, client_fd, n); 
+    }
+    free(raw_pipelined_requests);
+    return keep_alive; 
 }
 
 int handle_client(int client_fd) {
-    char raw_request[MAXLINE+1] = {0}; 
+    int keep_alive = 0;
+    char* raw_request = malloc(sizeof(char) * (MAXLINE + 1));
+    memset(raw_request, 0, MAXLINE + 1);
     int n = read(client_fd, raw_request, MAXLINE-1);
 
     if(n > 0) {
         // Replace crlf+crlf with array terminator
         raw_request[n-4] = '\0';
-        return _handle_client_request(raw_request, client_fd);
+        keep_alive = _handle_client_request(raw_request, client_fd);
     }
-    return 0;
+
+    free(raw_request);
+    return keep_alive;
 }
